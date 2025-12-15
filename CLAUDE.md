@@ -1,9 +1,9 @@
 # HouseQuay Development Roadmap
 
 ## Current Status
-**Phase:** 3 - Trust & Safety (IN PROGRESS)
-**Step:** 3.2 - Verification (NEXT)
-**Overall Progress:** ~80% to MVP
+**Phase:** 3 - Trust & Safety (MOSTLY COMPLETE)
+**Step:** MVP Ready for Testing
+**Overall Progress:** ~85% to MVP
 **Last Updated:** 2025-12-16
 
 ---
@@ -24,12 +24,13 @@
 - **Messaging system** - Conversations and messages
 - **Payment processing** - Stripe checkout integration
 - **Reviews & Ratings** - Post-stay reviews with host responses
+- **Legal Pages** - Terms of Service and Privacy Policy
 
 ## NEXT STEPS
-- Verification system (3.2) - Email/phone verification
-- Policies & Terms (3.3) - Cancellation policies, Terms of Service
+- Deploy to Vercel for testing
 - Connect browse page to show database listings alongside demo data
-- Deploy to Vercel
+- Email verification (post-MVP enhancement)
+- Email notifications (post-MVP enhancement)
 
 ---
 
@@ -96,15 +97,16 @@
   - [x] Rating display on listings
   - [x] Auto-update listing rating on new reviews
 
-- [ ] **3.2 Verification**
+- [ ] **3.2 Verification** (post-MVP)
   - [ ] Email/phone verification
   - [ ] ID verification (optional)
   - [ ] Host verification badges
 
-- [ ] **3.3 Policies & Insurance**
-  - [ ] Cancellation policies
-  - [ ] Insurance integration info
-  - [ ] Terms of service pages
+- [x] **3.3 Policies & Terms** (COMPLETE)
+  - [x] Terms of Service page (`/terms`)
+  - [x] Privacy Policy page (`/privacy`)
+  - [x] Cancellation policy info in Terms
+  - [x] Footer links to legal pages
 
 ### Phase 4: Growth Features
 - [ ] **4.1 Notifications**
