@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run build:*)",
+      "Bash(npm run dev:*)",
+      "Bash(start http://localhost:3000)",
+      "Bash(npm install:*)",
+      "Bash(start http://localhost:3001)",
+      "Bash(start http://localhost:3002)",
+      "Bash(rm:*)",
+      "Bash(git add:*)",
+      "Bash(git reset:*)",
+      "Bash(npx prisma init)",
+      "Bash(npx prisma:*)",
+      "Bash(npm uninstall:*)",
+      "WebSearch",
+      "Bash(node -e:*)",
+      "Bash(curl:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill //F //PID 15396)",
+      "Bash(taskkill //F //PID 23924)",
+      "Bash(taskkill //F //PID 41884)"
+    ]
+  }
+}

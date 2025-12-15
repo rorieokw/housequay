@@ -1,21 +1,129 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { notFound } from 'next/navigation';
-import { getJettyById } from '@/data/jetties';
+import { notFound, useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
+import { getJettyById, Jetty } from '@/data/jetties';
+import AvailabilityCalendar from '@/components/AvailabilityCalendar';
 
 interface JettyPageProps {
   params: { id: string };
 }
 
+// Map database boat size category to Jetty format
+const boatSizeCategoryMap: Record<string, 'small' | 'medium' | 'large' | 'xlarge' | 'yacht'> = {
+  SMALL: 'small',
+  MEDIUM: 'medium',
+  LARGE: 'large',
+  XLARGE: 'xlarge',
+  SUPERYACHT: 'yacht',
+};
+
+// Convert database listing to Jetty format
+function dbListingToJetty(listing: Record<string, unknown>): Jetty {
+  const host = listing.host as Record<string, unknown> || {};
+  const images = (listing.images as Array<{ url: string }>) || [];
+  const dbCategory = listing.maxBoatLengthCategory as string;
+
+  return {
+    id: listing.id as string,
+    title: listing.title as string,
+    description: listing.description as string,
+    location: listing.address as string,
+    city: listing.city as string,
+    coordinates: {
+      lat: listing.latitude as number,
+      lng: listing.longitude as number,
+    },
+    pricePerNight: listing.pricePerNight as number,
+    maxBoatLength: listing.maxBoatLength as number,
+    maxBoatLengthCategory: boatSizeCategoryMap[dbCategory] || 'medium',
+    images: images.length > 0
+      ? images.map(img => img.url)
+      : ['https://images.unsplash.com/photo-1500514966906-fe245eea9344?w=800'],
+    amenities: (listing.amenities as string[]) || [],
+    rating: (listing.rating as number) || 0,
+    reviewCount: (listing.reviewCount as number) || 0,
+    host: {
+      id: host.id as string || '',
+      name: host.name as string || 'Host',
+      avatar: host.image as string || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100',
+      superhost: host.isSuperhost as boolean || false,
+      responseRate: host.responseRate as number || 100,
+      responseTime: host.responseTime as string || 'within a day',
+    },
+    availability: {
+      instantBook: listing.instantBook as boolean || false,
+      minimumStay: listing.minimumStay as number || 1,
+    },
+    features: {
+      depth: listing.depth as number || 0,
+      width: listing.width as number || 0,
+      power: listing.hasPower as boolean || false,
+      water: listing.hasWater as boolean || false,
+      wifi: listing.hasWifi as boolean || false,
+      security: listing.hasSecurity as boolean || false,
+      lighting: listing.hasLighting as boolean || false,
+      fuel: listing.hasFuel as boolean || false,
+    },
+  };
+}
+
 export default function JettyPage({ params }: JettyPageProps) {
   const { id } = params;
-  const jetty = getJettyById(id);
+  const { data: session } = useSession();
+  const router = useRouter();
+  const [jetty, setJetty] = useState<Jetty | null>(null);
+  const [loading, setLoading] = useState(true);
   const [currentImage, setCurrentImage] = useState(0);
   const [checkIn, setCheckIn] = useState('');
   const [checkOut, setCheckOut] = useState('');
   const [showAllPhotos, setShowAllPhotos] = useState(false);
+
+  // Booking state
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const [bookingError, setBookingError] = useState('');
+  const [boatName, setBoatName] = useState('');
+  const [boatLength, setBoatLength] = useState('');
+  const [boatType, setBoatType] = useState('');
+  const [specialRequests, setSpecialRequests] = useState('');
+
+  useEffect(() => {
+    async function loadJetty() {
+      // First try to get from database
+      try {
+        const response = await fetch(`/api/listings/${id}`);
+        if (response.ok) {
+          const data = await response.json();
+          setJetty(dbListingToJetty(data));
+          setLoading(false);
+          return;
+        }
+      } catch (error) {
+        console.log('Database fetch failed, trying static data');
+      }
+
+      // Fall back to static data
+      const staticJetty = getJettyById(id);
+      if (staticJetty) {
+        setJetty(staticJetty);
+      }
+      setLoading(false);
+    }
+
+    loadJetty();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--primary)]"></div>
+      </div>
+    );
+  }
 
   if (!jetty) {
     notFound();
@@ -29,6 +137,65 @@ export default function JettyPage({ params }: JettyPageProps) {
   const serviceFee = Math.round(subtotal * 0.12);
   const total = subtotal + serviceFee;
 
+  // Get today's date for min date attribute
+  const today = new Date().toISOString().split('T')[0];
+
+  const handleBookingClick = () => {
+    if (!session) {
+      router.push(`/login?callbackUrl=/jetty/${id}`);
+      return;
+    }
+
+    if (!checkIn || !checkOut) {
+      setBookingError('Please select check-in and check-out dates');
+      return;
+    }
+
+    if (nights < jetty.availability.minimumStay) {
+      setBookingError(`Minimum stay is ${jetty.availability.minimumStay} nights`);
+      return;
+    }
+
+    setBookingError('');
+    setShowBookingModal(true);
+  };
+
+  const handleBookingSubmit = async () => {
+    setBookingLoading(true);
+    setBookingError('');
+
+    try {
+      const response = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          listingId: id,
+          checkIn,
+          checkOut,
+          boatName,
+          boatLength,
+          boatType,
+          specialRequests,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setBookingError(data.error || 'Failed to create booking');
+        return;
+      }
+
+      // Success - redirect to bookings page
+      router.push(`/bookings/${data.id}?success=true`);
+    } catch (error) {
+      setBookingError('Something went wrong. Please try again.');
+      console.error(error);
+    } finally {
+      setBookingLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[var(--background)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -40,8 +207,10 @@ export default function JettyPage({ params }: JettyPageProps) {
               <svg className="w-4 h-4 text-[var(--primary)]" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
               </svg>
-              <span className="font-medium">{jetty.rating}</span>
-              <span className="text-[var(--foreground)]/60">({jetty.reviewCount} reviews)</span>
+              <span className="font-medium">{jetty.rating || 'New'}</span>
+              {jetty.reviewCount > 0 && (
+                <span className="text-[var(--foreground)]/60">({jetty.reviewCount} reviews)</span>
+              )}
             </div>
             {jetty.host.superhost && (
               <span className="px-2 py-1 bg-[var(--muted)] rounded-full text-xs font-medium">
@@ -218,19 +387,21 @@ export default function JettyPage({ params }: JettyPageProps) {
             </div>
 
             {/* Amenities */}
-            <div className="pb-8 border-b border-[var(--border)]">
-              <h2 className="text-xl font-semibold mb-4">What this jetty offers</h2>
-              <div className="grid grid-cols-2 gap-4">
-                {jetty.amenities.map((amenity, index) => (
-                  <div key={index} className="flex items-center gap-3">
-                    <svg className="w-5 h-5 text-[var(--foreground)]/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>{amenity}</span>
-                  </div>
-                ))}
+            {jetty.amenities.length > 0 && (
+              <div className="pb-8 border-b border-[var(--border)]">
+                <h2 className="text-xl font-semibold mb-4">What this jetty offers</h2>
+                <div className="grid grid-cols-2 gap-4">
+                  {jetty.amenities.map((amenity, index) => (
+                    <div key={index} className="flex items-center gap-3">
+                      <svg className="w-5 h-5 text-[var(--foreground)]/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span className="capitalize">{amenity}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Specifications */}
             <div>
@@ -272,49 +443,76 @@ export default function JettyPage({ params }: JettyPageProps) {
                   <span className="text-2xl font-bold">${jetty.pricePerNight}</span>
                   <span className="text-[var(--foreground)]/60"> / night</span>
                 </div>
-                <div className="flex items-center gap-1 text-sm">
-                  <svg className="w-4 h-4 text-[var(--primary)]" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                  </svg>
-                  <span>{jetty.rating}</span>
-                </div>
+                {jetty.rating > 0 && (
+                  <div className="flex items-center gap-1 text-sm">
+                    <svg className="w-4 h-4 text-[var(--primary)]" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                    </svg>
+                    <span>{jetty.rating}</span>
+                  </div>
+                )}
               </div>
 
               <div className="border border-[var(--border)] rounded-lg overflow-hidden mb-4">
-                <div className="grid grid-cols-2">
-                  <div className="p-3 border-r border-b border-[var(--border)]">
-                    <label className="block text-xs font-semibold mb-1">CHECK-IN</label>
-                    <input
-                      type="date"
-                      value={checkIn}
-                      onChange={(e) => setCheckIn(e.target.value)}
-                      className="w-full bg-transparent text-sm focus:outline-none"
+                <button
+                  type="button"
+                  onClick={() => setShowCalendar(!showCalendar)}
+                  className="w-full"
+                >
+                  <div className="grid grid-cols-2">
+                    <div className="p-3 border-r border-b border-[var(--border)] text-left">
+                      <label className="block text-xs font-semibold mb-1">CHECK-IN</label>
+                      <p className={`text-sm ${checkIn ? '' : 'text-[var(--foreground)]/40'}`}>
+                        {checkIn ? new Date(checkIn).toLocaleDateString('en-AU', { month: 'short', day: 'numeric' }) : 'Add date'}
+                      </p>
+                    </div>
+                    <div className="p-3 border-b border-[var(--border)] text-left">
+                      <label className="block text-xs font-semibold mb-1">CHECK-OUT</label>
+                      <p className={`text-sm ${checkOut ? '' : 'text-[var(--foreground)]/40'}`}>
+                        {checkOut ? new Date(checkOut).toLocaleDateString('en-AU', { month: 'short', day: 'numeric' }) : 'Add date'}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+
+                {/* Calendar dropdown */}
+                {showCalendar && (
+                  <div className="border-t border-[var(--border)]">
+                    <AvailabilityCalendar
+                      listingId={id}
+                      checkIn={checkIn}
+                      checkOut={checkOut}
+                      onCheckInChange={(date) => {
+                        setCheckIn(date);
+                        setBookingError('');
+                      }}
+                      onCheckOutChange={(date) => {
+                        setCheckOut(date);
+                        setBookingError('');
+                        if (date) setShowCalendar(false);
+                      }}
+                      minimumStay={jetty.availability.minimumStay}
                     />
                   </div>
-                  <div className="p-3 border-b border-[var(--border)]">
-                    <label className="block text-xs font-semibold mb-1">CHECK-OUT</label>
-                    <input
-                      type="date"
-                      value={checkOut}
-                      onChange={(e) => setCheckOut(e.target.value)}
-                      min={checkIn}
-                      className="w-full bg-transparent text-sm focus:outline-none"
-                    />
-                  </div>
-                </div>
+                )}
               </div>
 
+              {bookingError && (
+                <p className="text-red-500 text-sm mb-3">{bookingError}</p>
+              )}
+
               <button
+                onClick={handleBookingClick}
                 className={`w-full py-3 rounded-lg font-semibold transition-colors ${
                   jetty.availability.instantBook
                     ? 'bg-[var(--primary)] text-white hover:bg-[var(--primary-dark)]'
                     : 'bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90'
                 }`}
               >
-                {jetty.availability.instantBook ? 'Reserve' : 'Request to Book'}
+                {!session ? 'Sign in to Book' : jetty.availability.instantBook ? 'Reserve' : 'Request to Book'}
               </button>
 
-              {!jetty.availability.instantBook && (
+              {!jetty.availability.instantBook && session && (
                 <p className="text-center text-sm text-[var(--foreground)]/60 mt-2">
                   You won&apos;t be charged yet
                 </p>
@@ -341,6 +539,156 @@ export default function JettyPage({ params }: JettyPageProps) {
           </div>
         </div>
       </div>
+
+      {/* Booking Modal */}
+      {showBookingModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white dark:bg-[var(--background)] rounded-xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-[var(--border)]">
+              <div className="flex justify-between items-center">
+                <h2 className="text-xl font-semibold">
+                  {jetty.availability.instantBook ? 'Confirm Reservation' : 'Request to Book'}
+                </h2>
+                <button
+                  onClick={() => setShowBookingModal(false)}
+                  className="p-2 hover:bg-[var(--muted)] rounded-lg transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Trip Summary */}
+              <div className="bg-[var(--muted)] rounded-lg p-4">
+                <h3 className="font-medium mb-3">Your trip</h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-[var(--foreground)]/60">Check-in</p>
+                    <p className="font-medium">{new Date(checkIn).toLocaleDateString('en-AU', { weekday: 'short', month: 'short', day: 'numeric' })}</p>
+                  </div>
+                  <div>
+                    <p className="text-[var(--foreground)]/60">Check-out</p>
+                    <p className="font-medium">{new Date(checkOut).toLocaleDateString('en-AU', { weekday: 'short', month: 'short', day: 'numeric' })}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Boat Details */}
+              <div>
+                <h3 className="font-medium mb-3">Boat details</h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Boat name</label>
+                    <input
+                      type="text"
+                      value={boatName}
+                      onChange={(e) => setBoatName(e.target.value)}
+                      placeholder="e.g., Sea Breeze"
+                      className="w-full px-4 py-2 border border-[var(--border)] rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Boat length (ft)</label>
+                      <input
+                        type="number"
+                        value={boatLength}
+                        onChange={(e) => setBoatLength(e.target.value)}
+                        placeholder="e.g., 32"
+                        max={jetty.maxBoatLength}
+                        className="w-full px-4 py-2 border border-[var(--border)] rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Boat type</label>
+                      <select
+                        value={boatType}
+                        onChange={(e) => setBoatType(e.target.value)}
+                        className="w-full px-4 py-2 border border-[var(--border)] rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+                      >
+                        <option value="">Select type</option>
+                        <option value="sailboat">Sailboat</option>
+                        <option value="motorboat">Motorboat</option>
+                        <option value="yacht">Yacht</option>
+                        <option value="fishing">Fishing boat</option>
+                        <option value="pontoon">Pontoon</option>
+                        <option value="jetski">Jet ski</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Special Requests */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Special requests (optional)</label>
+                <textarea
+                  value={specialRequests}
+                  onChange={(e) => setSpecialRequests(e.target.value)}
+                  placeholder="Any special requirements or questions for the host?"
+                  rows={3}
+                  className="w-full px-4 py-2 border border-[var(--border)] rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-[var(--primary)] resize-none"
+                />
+              </div>
+
+              {/* Price Breakdown */}
+              <div className="border-t border-[var(--border)] pt-4 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>${jetty.pricePerNight} x {nights} nights</span>
+                  <span>${subtotal}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>Service fee</span>
+                  <span>${serviceFee}</span>
+                </div>
+                <div className="flex justify-between font-semibold pt-2 border-t border-[var(--border)]">
+                  <span>Total</span>
+                  <span>${total}</span>
+                </div>
+              </div>
+
+              {bookingError && (
+                <p className="text-red-500 text-sm">{bookingError}</p>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-[var(--border)]">
+              <button
+                onClick={handleBookingSubmit}
+                disabled={bookingLoading}
+                className={`w-full py-3 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2 ${
+                  jetty.availability.instantBook
+                    ? 'bg-[var(--primary)] text-white hover:bg-[var(--primary-dark)]'
+                    : 'bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90'
+                } disabled:opacity-50`}
+              >
+                {bookingLoading ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Processing...
+                  </>
+                ) : jetty.availability.instantBook ? (
+                  'Confirm and Pay'
+                ) : (
+                  'Send Request'
+                )}
+              </button>
+              {!jetty.availability.instantBook && (
+                <p className="text-center text-xs text-[var(--foreground)]/60 mt-2">
+                  The host will review your request and respond within 24 hours.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

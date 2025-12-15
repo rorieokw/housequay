@@ -1,7 +1,15 @@
 'use client';
 
 import { useState } from 'react';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import ImageUpload from '@/components/ImageUpload';
+
+interface UploadedImage {
+  url: string;
+  publicId: string;
+}
 
 const boatSizeOptions = [
   { value: 'small', label: 'Small (up to 20ft)', description: 'Kayaks, jet skis, dinghies' },
@@ -25,7 +33,11 @@ const amenityOptions = [
 ];
 
 export default function HostPage() {
-  const [step, setStep] = useState(1);
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const [step, setStep] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -39,6 +51,7 @@ export default function HostPage() {
     minimumStay: '1',
     instantBook: false,
     amenities: [] as string[],
+    images: [] as UploadedImage[],
   });
 
   const updateField = (field: string, value: string | boolean | string[]) => {
@@ -65,15 +78,67 @@ export default function HostPage() {
       case 4:
         return formData.amenities.length > 0;
       case 5:
+        return formData.images.length > 0;
+      case 6:
         return formData.pricePerNight;
       default:
         return true;
     }
   };
 
-  const handleSubmit = () => {
-    alert('Your jetty listing has been submitted for review!');
-    // In a real app, this would submit to an API
+  const handleSubmit = async () => {
+    if (!session) {
+      router.push('/login?callbackUrl=/host');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError('');
+
+    try {
+      const response = await fetch('/api/listings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: formData.title,
+          description: formData.description,
+          address: formData.location,
+          city: formData.city,
+          maxBoatLength: formData.maxBoatLength,
+          boatSize: formData.boatSize,
+          depth: formData.depth,
+          width: formData.width,
+          pricePerNight: formData.pricePerNight,
+          minimumStay: formData.minimumStay,
+          instantBook: formData.instantBook,
+          amenities: formData.amenities,
+          images: formData.images,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || 'Failed to create listing');
+        return;
+      }
+
+      // Redirect to the new listing or dashboard
+      router.push(`/jetty/${data.id}?created=true`);
+    } catch (err) {
+      setError('Something went wrong. Please try again.');
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleStartListing = () => {
+    if (!session) {
+      router.push('/login?callbackUrl=/host');
+      return;
+    }
+    setStep(1);
   };
 
   return (
@@ -90,10 +155,10 @@ export default function HostPage() {
                 Join thousands of hosts earning money by renting out their jetties to boat owners. It&apos;s easy to get started.
               </p>
               <button
-                onClick={() => setStep(1)}
+                onClick={handleStartListing}
                 className="bg-white text-[var(--primary)] px-8 py-4 rounded-xl font-semibold hover:bg-white/90 transition-colors"
               >
-                Get Started
+                {session ? 'Get Started' : 'Sign In to Get Started'}
               </button>
             </div>
           </div>
@@ -161,10 +226,10 @@ export default function HostPage() {
 
           <div className="text-center">
             <button
-              onClick={() => setStep(1)}
+              onClick={handleStartListing}
               className="bg-[var(--primary)] text-white px-8 py-4 rounded-xl font-semibold hover:bg-[var(--primary-dark)] transition-colors"
             >
-              Start Your Listing
+              {session ? 'Start Your Listing' : 'Sign In to Start'}
             </button>
           </div>
         </div>
@@ -176,13 +241,13 @@ export default function HostPage() {
           {/* Progress Bar */}
           <div className="mb-8">
             <div className="flex justify-between text-sm text-[var(--foreground)]/60 mb-2">
-              <span>Step {step} of 6</span>
-              <span>{Math.round((step / 6) * 100)}% complete</span>
+              <span>Step {step} of 7</span>
+              <span>{Math.round((step / 7) * 100)}% complete</span>
             </div>
             <div className="h-2 bg-[var(--muted)] rounded-full overflow-hidden">
               <div
                 className="h-full bg-[var(--primary)] transition-all duration-300"
-                style={{ width: `${(step / 6) * 100}%` }}
+                style={{ width: `${(step / 7) * 100}%` }}
               />
             </div>
           </div>
@@ -354,8 +419,24 @@ export default function HostPage() {
             </div>
           )}
 
-          {/* Step 5: Pricing */}
+          {/* Step 5: Photos */}
           {step === 5 && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold">Add photos of your jetty</h2>
+              <p className="text-[var(--foreground)]/60">
+                High-quality photos help boaters understand what to expect. The first photo will be your cover image.
+              </p>
+
+              <ImageUpload
+                images={formData.images}
+                onImagesChange={(images) => updateField('images', images as unknown as string[])}
+                maxImages={10}
+              />
+            </div>
+          )}
+
+          {/* Step 6: Pricing */}
+          {step === 6 && (
             <div className="space-y-6">
               <h2 className="text-2xl font-bold">Set your price</h2>
               <p className="text-[var(--foreground)]/60">
@@ -415,13 +496,19 @@ export default function HostPage() {
             </div>
           )}
 
-          {/* Step 6: Review */}
-          {step === 6 && (
+          {/* Step 7: Review */}
+          {step === 7 && (
             <div className="space-y-6">
               <h2 className="text-2xl font-bold">Review your listing</h2>
               <p className="text-[var(--foreground)]/60">
                 Make sure everything looks good before publishing.
               </p>
+
+              {error && (
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-lg p-4">
+                  {error}
+                </div>
+              )}
 
               <div className="bg-[var(--muted)] rounded-xl p-6 space-y-4">
                 <div>
@@ -471,6 +558,36 @@ export default function HostPage() {
 
                 <hr className="border-[var(--border)]" />
 
+                {formData.images.length > 0 && (
+                  <>
+                    <div>
+                      <span className="text-sm text-[var(--foreground)]/60">Photos ({formData.images.length}):</span>
+                      <div className="grid grid-cols-4 gap-2 mt-2">
+                        {formData.images.slice(0, 4).map((image, index) => (
+                          <div key={image.publicId} className="relative aspect-video rounded-lg overflow-hidden">
+                            <img
+                              src={image.url}
+                              alt={`Photo ${index + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                            {index === 0 && (
+                              <div className="absolute top-1 left-1 bg-black/70 text-white px-1.5 py-0.5 rounded text-xs">
+                                Cover
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      {formData.images.length > 4 && (
+                        <p className="text-xs text-[var(--foreground)]/40 mt-1">
+                          +{formData.images.length - 4} more photos
+                        </p>
+                      )}
+                    </div>
+                    <hr className="border-[var(--border)]" />
+                  </>
+                )}
+
                 <div className="text-sm">
                   <span className="text-[var(--foreground)]/60">Description:</span>
                   <p className="mt-1">{formData.description}</p>
@@ -488,7 +605,7 @@ export default function HostPage() {
               Back
             </button>
 
-            {step < 6 ? (
+            {step < 7 ? (
               <button
                 onClick={() => setStep(step + 1)}
                 disabled={!canProceed()}
@@ -499,9 +616,20 @@ export default function HostPage() {
             ) : (
               <button
                 onClick={handleSubmit}
-                className="px-6 py-3 bg-[var(--primary)] text-white rounded-lg font-medium hover:bg-[var(--primary-dark)] transition-colors"
+                disabled={isSubmitting}
+                className="px-6 py-3 bg-[var(--primary)] text-white rounded-lg font-medium hover:bg-[var(--primary-dark)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
-                Publish Listing
+                {isSubmitting ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Publishing...
+                  </>
+                ) : (
+                  'Publish Listing'
+                )}
               </button>
             )}
           </div>

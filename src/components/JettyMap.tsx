@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Jetty } from '@/data/jetties';
 import Link from 'next/link';
+import type { Map as LeafletMap } from 'leaflet';
 
 interface JettyMapProps {
   jetties: Jetty[];
@@ -11,7 +12,8 @@ interface JettyMapProps {
 }
 
 export default function JettyMap({ jetties, selectedJetty, onMarkerClick }: JettyMapProps) {
-  const [map, setMap] = useState<L.Map | null>(null);
+  const [map, setMap] = useState<LeafletMap | null>(null);
+  const mapRef = useRef<LeafletMap | null>(null);
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
@@ -85,12 +87,14 @@ export default function JettyMap({ jetties, selectedJetty, onMarkerClick }: Jett
         });
       });
 
+      mapRef.current = mapInstance;
       setMap(mapInstance);
     });
 
     return () => {
-      if (map) {
-        map.remove();
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
       }
     };
   }, [isClient, jetties, onMarkerClick]);
