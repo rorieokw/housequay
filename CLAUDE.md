@@ -1,9 +1,9 @@
 # HouseQuay Development Roadmap
 
 ## Current Status
-**Phase:** 2 - Transactions (IN PROGRESS)
-**Step:** 2.2 - Payment Processing (NEXT)
-**Overall Progress:** ~65% to MVP
+**Phase:** 2 - Transactions (COMPLETE)
+**Step:** Phase 3 - Trust & Safety (NEXT)
+**Overall Progress:** ~75% to MVP
 **Last Updated:** 2025-12-16
 
 ---
@@ -68,16 +68,21 @@
   - [x] Cancel booking functionality
   - [x] Real calendar with availability display
 
-- [ ] **2.2 Payment Processing**
-  - [ ] Stripe integration
-  - [ ] Hold funds until check-in
-  - [ ] Host payouts
-  - [ ] Service fee collection (12%)
+- [x] **2.2 Payment Processing** (COMPLETE - MVP)
+  - [x] Stripe integration (checkout sessions)
+  - [x] Checkout API (`/api/checkout`)
+  - [x] Webhook for payment events (`/api/webhook/stripe`)
+  - [x] Pay Now button on booking detail page
+  - [x] Service fee collection (12%)
+  - [ ] Hold funds until check-in (post-MVP)
+  - [ ] Host payouts via Stripe Connect (post-MVP)
 
-- [ ] **2.3 Messaging**
-  - [ ] Boater <-> Host communication
-  - [ ] Pre-booking inquiries
-  - [ ] Booking-related messages
+- [x] **2.3 Messaging** (COMPLETE)
+  - [x] Conversations list (`/messages`)
+  - [x] Real-time chat UI (`/messages/[id]`)
+  - [x] Contact Host button on listing pages
+  - [x] Conversation API with listing context
+  - [x] Message send/receive functionality
 
 ### Phase 3: Trust & Safety
 - [ ] **3.1 Reviews & Ratings**
