@@ -47,6 +47,17 @@ export async function GET(
             },
           },
         },
+        review: {
+          include: {
+            author: {
+              select: {
+                id: true,
+                name: true,
+                image: true,
+              },
+            },
+          },
+        },
       },
     })
 

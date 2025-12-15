@@ -1,9 +1,9 @@
 # HouseQuay Development Roadmap
 
 ## Current Status
-**Phase:** 2 - Transactions (COMPLETE)
-**Step:** Phase 3 - Trust & Safety (NEXT)
-**Overall Progress:** ~75% to MVP
+**Phase:** 3 - Trust & Safety (IN PROGRESS)
+**Step:** 3.2 - Verification (NEXT)
+**Overall Progress:** ~80% to MVP
 **Last Updated:** 2025-12-16
 
 ---
@@ -22,11 +22,14 @@
 - **Booking detail page** with approve/decline/cancel actions
 - **Availability calendar** with booked/blocked dates display
 - **Messaging system** - Conversations and messages
+- **Payment processing** - Stripe checkout integration
+- **Reviews & Ratings** - Post-stay reviews with host responses
 
 ## NEXT STEPS
-- Implement Stripe payments (2.2)
-- Build remaining messaging features (2.3)
+- Verification system (3.2) - Email/phone verification
+- Policies & Terms (3.3) - Cancellation policies, Terms of Service
 - Connect browse page to show database listings alongside demo data
+- Deploy to Vercel
 
 ---
 
@@ -84,11 +87,14 @@
   - [x] Conversation API with listing context
   - [x] Message send/receive functionality
 
-### Phase 3: Trust & Safety
-- [ ] **3.1 Reviews & Ratings**
-  - [ ] Post-stay reviews
-  - [ ] Host responses
-  - [ ] Rating display on listings
+### Phase 3: Trust & Safety (CURRENT)
+- [x] **3.1 Reviews & Ratings** (COMPLETE)
+  - [x] Reviews API (`/api/reviews`)
+  - [x] Post-stay reviews on booking detail page
+  - [x] Host responses to reviews
+  - [x] Star ratings (1-5)
+  - [x] Rating display on listings
+  - [x] Auto-update listing rating on new reviews
 
 - [ ] **3.2 Verification**
   - [ ] Email/phone verification

@@ -6,6 +6,25 @@ import { useEffect, useState, Suspense } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 
+interface Review {
+  id: string
+  overall: number
+  cleanliness: number | null
+  accuracy: number | null
+  communication: number | null
+  location: number | null
+  value: number | null
+  content: string
+  hostReply: string | null
+  hostRepliedAt: string | null
+  createdAt: string
+  author: {
+    id: string
+    name: string
+    image: string | null
+  }
+}
+
 interface BookingDetail {
   id: string
   checkIn: string
@@ -45,6 +64,7 @@ interface BookingDetail {
     }
     images: Array<{ url: string }>
   }
+  review: Review | null
 }
 
 const statusColors: Record<string, string> = {
@@ -87,6 +107,14 @@ function BookingDetailContent({ id }: { id: string }) {
   const [paymentLoading, setPaymentLoading] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [cancellationReason, setCancellationReason] = useState('')
+
+  // Review state
+  const [showReviewForm, setShowReviewForm] = useState(false)
+  const [reviewLoading, setReviewLoading] = useState(false)
+  const [reviewRating, setReviewRating] = useState(5)
+  const [reviewContent, setReviewContent] = useState('')
+  const [hostReplyText, setHostReplyText] = useState('')
+  const [replyLoading, setReplyLoading] = useState(false)
 
   const isSuccess = searchParams.get('success') === 'true'
   const paymentSuccess = searchParams.get('payment') === 'success'
@@ -164,6 +192,56 @@ function BookingDetailContent({ id }: { id: string }) {
       console.error('Failed to initiate payment:', error)
     } finally {
       setPaymentLoading(false)
+    }
+  }
+
+  const handleSubmitReview = async () => {
+    if (!reviewContent.trim()) return
+
+    setReviewLoading(true)
+    try {
+      const response = await fetch('/api/reviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookingId: id,
+          overall: reviewRating,
+          content: reviewContent,
+        }),
+      })
+
+      if (response.ok) {
+        fetchBooking() // Refresh to show the review
+        setShowReviewForm(false)
+        setReviewContent('')
+        setReviewRating(5)
+      }
+    } catch (error) {
+      console.error('Failed to submit review:', error)
+    } finally {
+      setReviewLoading(false)
+    }
+  }
+
+  const handleHostReply = async () => {
+    if (!hostReplyText.trim() || !booking?.review) return
+
+    setReplyLoading(true)
+    try {
+      const response = await fetch(`/api/reviews/${booking.review.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hostReply: hostReplyText }),
+      })
+
+      if (response.ok) {
+        fetchBooking() // Refresh to show the reply
+        setHostReplyText('')
+      }
+    } catch (error) {
+      console.error('Failed to submit reply:', error)
+    } finally {
+      setReplyLoading(false)
     }
   }
 
@@ -426,6 +504,160 @@ function BookingDetailContent({ id }: { id: string }) {
                 </div>
               </div>
             </div>
+
+            {/* Review Section */}
+            {booking.status === 'COMPLETED' && (
+              <div className="border-t border-[var(--border)] pt-6 mb-8">
+                <h2 className="font-semibold text-lg mb-4">Review</h2>
+
+                {/* Existing Review */}
+                {booking.review ? (
+                  <div className="space-y-4">
+                    <div className="bg-[var(--muted)] rounded-lg p-4">
+                      <div className="flex items-start gap-3 mb-3">
+                        <div className="w-10 h-10 rounded-full bg-[var(--primary)] flex items-center justify-center overflow-hidden flex-shrink-0">
+                          {booking.review.author.image ? (
+                            <Image
+                              src={booking.review.author.image}
+                              alt={booking.review.author.name}
+                              width={40}
+                              height={40}
+                              className="object-cover"
+                            />
+                          ) : (
+                            <span className="text-white font-medium">
+                              {booking.review.author.name?.[0]?.toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <p className="font-medium">{booking.review.author.name}</p>
+                            <div className="flex items-center gap-1">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <svg
+                                  key={star}
+                                  className={`w-4 h-4 ${star <= booking.review!.overall ? 'text-yellow-400' : 'text-gray-300'}`}
+                                  fill="currentColor"
+                                  viewBox="0 0 20 20"
+                                >
+                                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                </svg>
+                              ))}
+                            </div>
+                          </div>
+                          <p className="text-sm text-[var(--foreground)]/60">
+                            {new Date(booking.review.createdAt).toLocaleDateString('en-AU', {
+                              month: 'long',
+                              year: 'numeric',
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                      <p className="text-[var(--foreground)]/80">{booking.review.content}</p>
+                    </div>
+
+                    {/* Host Reply */}
+                    {booking.review.hostReply && (
+                      <div className="ml-8 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+                        <p className="text-sm font-medium text-[var(--primary)] mb-1">
+                          Response from {booking.listing.host.name}
+                        </p>
+                        <p className="text-[var(--foreground)]/80">{booking.review.hostReply}</p>
+                      </div>
+                    )}
+
+                    {/* Host Reply Form */}
+                    {isHost && !booking.review.hostReply && (
+                      <div className="ml-8">
+                        <textarea
+                          value={hostReplyText}
+                          onChange={(e) => setHostReplyText(e.target.value)}
+                          placeholder="Write a response to this review..."
+                          rows={3}
+                          className="w-full px-4 py-2 border border-[var(--border)] rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-[var(--primary)] resize-none"
+                        />
+                        <button
+                          onClick={handleHostReply}
+                          disabled={replyLoading || !hostReplyText.trim()}
+                          className="mt-2 px-4 py-2 bg-[var(--primary)] text-white rounded-lg font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+                        >
+                          {replyLoading ? 'Sending...' : 'Send Response'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : isGuest ? (
+                  /* Review Form for Guests */
+                  showReviewForm ? (
+                    <div className="space-y-4">
+                      {/* Star Rating */}
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Your rating</label>
+                        <div className="flex gap-1">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <button
+                              key={star}
+                              type="button"
+                              onClick={() => setReviewRating(star)}
+                              className="focus:outline-none"
+                            >
+                              <svg
+                                className={`w-8 h-8 ${star <= reviewRating ? 'text-yellow-400' : 'text-gray-300'} hover:text-yellow-400 transition-colors`}
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                              </svg>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Review Content */}
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Your review</label>
+                        <textarea
+                          value={reviewContent}
+                          onChange={(e) => setReviewContent(e.target.value)}
+                          placeholder="Share your experience with this jetty..."
+                          rows={4}
+                          className="w-full px-4 py-2 border border-[var(--border)] rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-[var(--primary)] resize-none"
+                        />
+                      </div>
+
+                      <div className="flex gap-3">
+                        <button
+                          onClick={handleSubmitReview}
+                          disabled={reviewLoading || !reviewContent.trim()}
+                          className="px-6 py-2 bg-[var(--primary)] text-white rounded-lg font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+                        >
+                          {reviewLoading ? 'Submitting...' : 'Submit Review'}
+                        </button>
+                        <button
+                          onClick={() => setShowReviewForm(false)}
+                          className="px-6 py-2 border border-[var(--border)] rounded-lg font-medium hover:bg-[var(--muted)] transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setShowReviewForm(true)}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--primary)] text-white rounded-lg font-medium hover:opacity-90 transition-opacity"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                      </svg>
+                      Leave a Review
+                    </button>
+                  )
+                ) : (
+                  <p className="text-[var(--foreground)]/60">No review yet</p>
+                )}
+              </div>
+            )}
 
             {/* Actions */}
             {(canApproveDecline || canCancel || canPay) && (

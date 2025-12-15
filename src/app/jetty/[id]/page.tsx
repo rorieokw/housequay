@@ -92,6 +92,18 @@ export default function JettyPage({ params }: JettyPageProps) {
   const [specialRequests, setSpecialRequests] = useState('');
   const [contactLoading, setContactLoading] = useState(false);
 
+  // Reviews state
+  interface Review {
+    id: string;
+    overall: number;
+    content: string;
+    hostReply: string | null;
+    createdAt: string;
+    author: { id: string; name: string; image: string | null };
+  }
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+
   useEffect(() => {
     async function loadJetty() {
       // First try to get from database
@@ -116,7 +128,23 @@ export default function JettyPage({ params }: JettyPageProps) {
     }
 
     loadJetty();
+    loadReviews();
   }, [id]);
+
+  async function loadReviews() {
+    setReviewsLoading(true);
+    try {
+      const response = await fetch(`/api/reviews?listingId=${id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setReviews(data.reviews || []);
+      }
+    } catch (error) {
+      console.log('Failed to load reviews:', error);
+    } finally {
+      setReviewsLoading(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -463,7 +491,7 @@ export default function JettyPage({ params }: JettyPageProps) {
             )}
 
             {/* Specifications */}
-            <div>
+            <div className="pb-8 border-b border-[var(--border)]">
               <h2 className="text-xl font-semibold mb-4">Specifications</h2>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
                 <div>
@@ -491,6 +519,85 @@ export default function JettyPage({ params }: JettyPageProps) {
                   <p className="font-semibold capitalize">{jetty.host.responseTime}</p>
                 </div>
               </div>
+            </div>
+
+            {/* Reviews Section */}
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <svg className="w-5 h-5 text-[var(--primary)]" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                </svg>
+                <h2 className="text-xl font-semibold">
+                  {jetty.rating > 0 ? `${jetty.rating} · ` : ''}
+                  {reviews.length} review{reviews.length !== 1 ? 's' : ''}
+                </h2>
+              </div>
+
+              {reviewsLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--primary)]"></div>
+                </div>
+              ) : reviews.length === 0 ? (
+                <p className="text-[var(--foreground)]/60">No reviews yet. Be the first to stay here!</p>
+              ) : (
+                <div className="space-y-6">
+                  {reviews.map((review) => (
+                    <div key={review.id} className="space-y-3">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-full bg-[var(--primary)] flex items-center justify-center overflow-hidden flex-shrink-0">
+                          {review.author.image ? (
+                            <Image
+                              src={review.author.image}
+                              alt={review.author.name}
+                              width={40}
+                              height={40}
+                              className="object-cover"
+                            />
+                          ) : (
+                            <span className="text-white font-medium">
+                              {review.author.name?.[0]?.toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <p className="font-medium">{review.author.name}</p>
+                            <div className="flex items-center gap-1">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <svg
+                                  key={star}
+                                  className={`w-4 h-4 ${star <= review.overall ? 'text-yellow-400' : 'text-gray-300'}`}
+                                  fill="currentColor"
+                                  viewBox="0 0 20 20"
+                                >
+                                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                </svg>
+                              ))}
+                            </div>
+                          </div>
+                          <p className="text-sm text-[var(--foreground)]/60">
+                            {new Date(review.createdAt).toLocaleDateString('en-AU', {
+                              month: 'long',
+                              year: 'numeric',
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                      <p className="text-[var(--foreground)]/80">{review.content}</p>
+
+                      {/* Host Reply */}
+                      {review.hostReply && (
+                        <div className="ml-10 bg-[var(--muted)] rounded-lg p-4">
+                          <p className="text-sm font-medium text-[var(--primary)] mb-1">
+                            Response from {jetty.host.name}
+                          </p>
+                          <p className="text-[var(--foreground)]/80 text-sm">{review.hostReply}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
