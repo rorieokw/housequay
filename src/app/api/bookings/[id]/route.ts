@@ -6,9 +6,10 @@ import { prisma } from '@/lib/db'
 // GET /api/bookings/[id] - Get a single booking
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
 
     if (!session?.user?.id) {
@@ -19,7 +20,7 @@ export async function GET(
     }
 
     const booking = await prisma.booking.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         guest: {
           select: {
@@ -92,9 +93,10 @@ export async function GET(
 // PATCH /api/bookings/[id] - Update booking status (approve/decline/cancel)
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
 
     if (!session?.user?.id) {
@@ -108,7 +110,7 @@ export async function PATCH(
     const { action, cancellationReason } = body
 
     const booking = await prisma.booking.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         listing: {
           select: {
@@ -145,7 +147,7 @@ export async function PATCH(
           )
         }
         await prisma.booking.update({
-          where: { id: params.id },
+          where: { id },
           data: { status: 'CONFIRMED' },
         })
         break
@@ -165,7 +167,7 @@ export async function PATCH(
           )
         }
         await prisma.booking.update({
-          where: { id: params.id },
+          where: { id },
           data: { status: 'DECLINED' },
         })
         break
@@ -185,7 +187,7 @@ export async function PATCH(
           )
         }
         await prisma.booking.update({
-          where: { id: params.id },
+          where: { id },
           data: {
             status: 'CANCELLED',
             cancelledAt: new Date(),
@@ -204,7 +206,7 @@ export async function PATCH(
 
     // Fetch updated booking
     const updatedBooking = await prisma.booking.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         guest: {
           select: {

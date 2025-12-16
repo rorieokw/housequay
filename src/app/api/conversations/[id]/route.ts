@@ -6,9 +6,10 @@ import { prisma } from '@/lib/db'
 // GET /api/conversations/[id] - Get a single conversation with messages
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
 
     if (!session?.user?.id) {
@@ -19,7 +20,7 @@ export async function GET(
     }
 
     const conversation = await prisma.conversation.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         participants: {
           include: {
@@ -84,7 +85,7 @@ export async function GET(
     // Update lastReadAt for current user
     await prisma.conversationParticipant.updateMany({
       where: {
-        conversationId: params.id,
+        conversationId: id,
         userId: session.user.id,
       },
       data: {
@@ -95,7 +96,7 @@ export async function GET(
     // Mark messages as read
     await prisma.message.updateMany({
       where: {
-        conversationId: params.id,
+        conversationId: id,
         receiverId: session.user.id,
         isRead: false,
       },

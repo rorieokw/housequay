@@ -6,11 +6,12 @@ import { prisma } from '@/lib/db'
 // GET /api/reviews/[id] - Get a single review
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const review = await prisma.review.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         author: {
           select: {
@@ -64,9 +65,10 @@ export async function GET(
 // PATCH /api/reviews/[id] - Host reply to review
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
 
     if (!session?.user?.id) {
@@ -88,7 +90,7 @@ export async function PATCH(
 
     // Get the review
     const review = await prisma.review.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         listing: true,
       },
@@ -111,7 +113,7 @@ export async function PATCH(
 
     // Update with host reply
     const updatedReview = await prisma.review.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         hostReply: hostReply.trim(),
         hostRepliedAt: new Date(),

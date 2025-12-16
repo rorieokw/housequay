@@ -6,9 +6,10 @@ import { prisma } from '@/lib/db'
 // POST /api/conversations/[id]/messages - Send a message
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
 
     if (!session?.user?.id) {
@@ -30,7 +31,7 @@ export async function POST(
 
     // Get conversation and verify user is participant
     const conversation = await prisma.conversation.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         participants: true,
       },
@@ -70,7 +71,7 @@ export async function POST(
     const message = await prisma.message.create({
       data: {
         content: content.trim(),
-        conversationId: params.id,
+        conversationId: id,
         senderId: session.user.id,
         receiverId: receiver.userId,
       },
@@ -87,7 +88,7 @@ export async function POST(
 
     // Update conversation's updatedAt
     await prisma.conversation.update({
-      where: { id: params.id },
+      where: { id },
       data: { updatedAt: new Date() },
     })
 

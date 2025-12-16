@@ -4,10 +4,10 @@ import { prisma } from '@/lib/db'
 // GET /api/listings/[id]/availability - Get booked dates for a listing
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params
+    const { id } = await params
 
     // Get all active bookings for this listing
     const bookings = await prisma.booking.findMany({
