@@ -1,12 +1,90 @@
 'use client';
 
-import { useState, useMemo, Suspense, lazy } from 'react';
+import { useState, useMemo, useEffect, Suspense, lazy } from 'react';
 import { useSearchParams } from 'next/navigation';
 import SearchBar from '@/components/SearchBar';
 import JettyCard from '@/components/JettyCard';
-import { jetties, filterJetties, Jetty } from '@/data/jetties';
+import { jetties as demoJetties, filterJetties, Jetty } from '@/data/jetties';
 
 const JettyMap = lazy(() => import('@/components/JettyMap'));
+
+// Convert database listing to Jetty format
+interface DbListing {
+  id: string;
+  title: string;
+  description: string;
+  city: string;
+  state: string;
+  address: string;
+  lat: number;
+  lng: number;
+  pricePerNight: number;
+  cleaningFee: number | null;
+  maxBoatLength: number;
+  waterDepth: number;
+  berthWidth: number;
+  amenities: string[];
+  instantBook: boolean;
+  rating: number;
+  reviewCount: number;
+  images: Array<{ url: string }>;
+  host: {
+    id: string;
+    name: string;
+    image: string | null;
+  };
+}
+
+function getBoatLengthCategory(length: number): 'small' | 'medium' | 'large' | 'xlarge' | 'yacht' {
+  if (length <= 20) return 'small';
+  if (length <= 35) return 'medium';
+  if (length <= 50) return 'large';
+  if (length <= 75) return 'xlarge';
+  return 'yacht';
+}
+
+function dbListingToJetty(listing: DbListing): Jetty {
+  return {
+    id: listing.id,
+    title: listing.title,
+    description: listing.description,
+    location: `${listing.address}, ${listing.city}`,
+    city: listing.city,
+    coordinates: { lat: listing.lat, lng: listing.lng },
+    pricePerNight: listing.pricePerNight,
+    maxBoatLength: listing.maxBoatLength,
+    maxBoatLengthCategory: getBoatLengthCategory(listing.maxBoatLength),
+    images: listing.images.length > 0
+      ? listing.images.map(img => img.url)
+      : ['https://images.unsplash.com/photo-1540946485063-a40da27545f8?w=800'],
+    amenities: listing.amenities,
+    rating: listing.rating,
+    reviewCount: listing.reviewCount,
+    host: {
+      id: listing.host.id,
+      name: listing.host.name,
+      avatar: listing.host.image || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200',
+      superhost: false,
+      responseRate: 100,
+      responseTime: 'within an hour',
+    },
+    availability: {
+      instantBook: listing.instantBook,
+      minimumStay: 1,
+    },
+    features: {
+      depth: listing.waterDepth,
+      width: listing.berthWidth,
+      power: listing.amenities.includes('Power'),
+      water: listing.amenities.includes('Water'),
+      wifi: listing.amenities.includes('WiFi'),
+      security: listing.amenities.includes('Security'),
+      lighting: listing.amenities.includes('Lighting'),
+      fuel: listing.amenities.includes('Fuel'),
+    },
+    isFromDatabase: true,
+  };
+}
 
 const boatSizeOptions = [
   { value: '', label: 'Any size' },
@@ -51,14 +129,78 @@ function BrowseContent() {
   const [viewMode, setViewMode] = useState<'list' | 'map' | 'split'>('list');
   const [selectedJetty, setSelectedJetty] = useState<Jetty | null>(null);
 
+  // Database listings state
+  const [dbListings, setDbListings] = useState<Jetty[]>([]);
+  const [loadingDb, setLoadingDb] = useState(true);
+
+  // Fetch database listings on mount
+  useEffect(() => {
+    async function fetchListings() {
+      try {
+        const response = await fetch('/api/listings');
+        if (response.ok) {
+          const data = await response.json();
+          const converted = data.listings.map(dbListingToJetty);
+          setDbListings(converted);
+        }
+      } catch (error) {
+        console.log('Failed to fetch database listings:', error);
+      } finally {
+        setLoadingDb(false);
+      }
+    }
+    fetchListings();
+  }, []);
+
+  // Combine database listings with demo listings (db listings first)
+  const allJetties = useMemo(() => {
+    // Filter out demo jetties that might conflict with db jetties by ID
+    const dbIds = new Set(dbListings.map(j => j.id));
+    const filteredDemo = demoJetties.filter(j => !dbIds.has(j.id));
+    return [...dbListings, ...filteredDemo];
+  }, [dbListings]);
+
   const filteredJetties = useMemo(() => {
-    let results = filterJetties({
-      location: location || undefined,
-      boatSize: boatSize || undefined,
-      minPrice: minPrice ? parseInt(minPrice) : undefined,
-      maxPrice: maxPrice ? parseInt(maxPrice) : undefined,
-      amenities: selectedAmenities.length > 0 ? selectedAmenities : undefined,
-    });
+    // Apply filters to combined listings
+    let results = allJetties;
+
+    // Location filter
+    if (location) {
+      const loc = location.toLowerCase();
+      results = results.filter(j =>
+        j.location.toLowerCase().includes(loc) ||
+        j.city.toLowerCase().includes(loc) ||
+        j.title.toLowerCase().includes(loc)
+      );
+    }
+
+    // Boat size filter
+    if (boatSize) {
+      const sizeMap: Record<string, number> = {
+        small: 20,
+        medium: 35,
+        large: 50,
+        xlarge: 75,
+        yacht: 200,
+      };
+      const minLength = sizeMap[boatSize] || 0;
+      results = results.filter(j => j.maxBoatLength >= minLength);
+    }
+
+    // Price filter
+    if (minPrice) {
+      results = results.filter(j => j.pricePerNight >= parseInt(minPrice));
+    }
+    if (maxPrice) {
+      results = results.filter(j => j.pricePerNight <= parseInt(maxPrice));
+    }
+
+    // Amenities filter
+    if (selectedAmenities.length > 0) {
+      results = results.filter(j =>
+        selectedAmenities.every(amenity => j.amenities.includes(amenity))
+      );
+    }
 
     // Sort results
     switch (sortBy) {
@@ -74,10 +216,18 @@ function BrowseContent() {
       case 'reviews':
         results = [...results].sort((a, b) => b.reviewCount - a.reviewCount);
         break;
+      default:
+        // Recommended: Show database listings first, then by rating
+        results = [...results].sort((a, b) => {
+          const aDb = (a as Jetty & { isFromDatabase?: boolean }).isFromDatabase ? 1 : 0;
+          const bDb = (b as Jetty & { isFromDatabase?: boolean }).isFromDatabase ? 1 : 0;
+          if (bDb !== aDb) return bDb - aDb;
+          return b.rating - a.rating;
+        });
     }
 
     return results;
-  }, [location, boatSize, minPrice, maxPrice, selectedAmenities, sortBy]);
+  }, [allJetties, location, boatSize, minPrice, maxPrice, selectedAmenities, sortBy]);
 
   const toggleAmenity = (amenity: string) => {
     setSelectedAmenities((prev) =>

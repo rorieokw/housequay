@@ -34,6 +34,7 @@ export interface Jetty {
     lighting: boolean;
     fuel: boolean;
   };
+  isFromDatabase?: boolean;
 }
 
 export const jetties: Jetty[] = [
