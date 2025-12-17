@@ -1,10 +1,10 @@
 # HouseQuay Development Roadmap
 
 ## Current Status
-**Phase:** 3 - Trust & Safety (MOSTLY COMPLETE)
-**Step:** MVP Ready for Testing
-**Overall Progress:** ~85% to MVP
-**Last Updated:** 2025-12-16
+**Phase:** 4 - Growth Features (COMPLETE)
+**Step:** Full MVP Complete
+**Overall Progress:** ~95% to Production
+**Last Updated:** 2025-12-18
 
 ---
 
@@ -25,12 +25,15 @@
 - **Payment processing** - Stripe checkout integration
 - **Reviews & Ratings** - Post-stay reviews with host responses
 - **Legal Pages** - Terms of Service and Privacy Policy
+- **Email Notifications** - Booking and message notifications via Resend
+- **Wishlist/Favorites** - Save and manage favorite jetties
+- **Enhanced Search** - Date-aware availability filtering
+- **Premium Design** - Polished UI with gradients, animations
 
 ## NEXT STEPS
-- Deploy to Vercel for testing
-- Connect browse page to show database listings alongside demo data
+- Add Resend API key to production environment
 - Email verification (post-MVP enhancement)
-- Email notifications (post-MVP enhancement)
+- SMS notifications (optional)
 
 ---
 
@@ -141,9 +144,9 @@
 | Database | PostgreSQL (Supabase) | ✅ Done |
 | ORM | Prisma | ✅ Done |
 | Image Storage | Cloudinary | ✅ Done |
-| Payments | Stripe | Pending |
+| Payments | Stripe | ✅ Done |
 | Email | Resend | Pending |
-| Hosting | Vercel | Pending |
+| Hosting | Vercel | ✅ Done |
 
 ---
 

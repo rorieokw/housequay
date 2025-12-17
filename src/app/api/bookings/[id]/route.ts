@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import {
+  sendBookingConfirmedEmail,
+  sendBookingDeclinedEmail,
+  sendBookingCancelledEmail,
+  BookingEmailData
+} from '@/lib/email'
 
 // GET /api/bookings/[id] - Get a single booking
 export async function GET(
@@ -204,7 +210,7 @@ export async function PATCH(
         )
     }
 
-    // Fetch updated booking
+    // Fetch updated booking with full details for email
     const updatedBooking = await prisma.booking.findUnique({
       where: { id },
       include: {
@@ -229,6 +235,38 @@ export async function PATCH(
         },
       },
     })
+
+    // Send email notifications
+    if (updatedBooking) {
+      const emailData: BookingEmailData = {
+        guestName: updatedBooking.guest.name || 'Guest',
+        guestEmail: updatedBooking.guest.email || '',
+        hostName: updatedBooking.listing.host.name || 'Host',
+        hostEmail: updatedBooking.listing.host.email || '',
+        listingTitle: updatedBooking.listing.title,
+        listingId: updatedBooking.listing.id,
+        bookingId: updatedBooking.id,
+        checkIn: updatedBooking.checkIn.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }),
+        checkOut: updatedBooking.checkOut.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }),
+        totalPrice: updatedBooking.total,
+        nights: updatedBooking.nights,
+      }
+
+      switch (action) {
+        case 'approve':
+          sendBookingConfirmedEmail(emailData).catch(console.error)
+          break
+        case 'decline':
+          sendBookingDeclinedEmail(emailData).catch(console.error)
+          break
+        case 'cancel':
+          sendBookingCancelledEmail({
+            ...emailData,
+            cancelledBy: isGuest ? 'guest' : 'host',
+          }).catch(console.error)
+          break
+      }
+    }
 
     return NextResponse.json(updatedBooking)
   } catch (error) {

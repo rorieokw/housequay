@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { sendBookingRequestEmail, sendBookingConfirmedEmail, BookingEmailData } from '@/lib/email'
 
 // GET /api/bookings - Fetch user's bookings (as guest or host)
 export async function GET(request: NextRequest) {
@@ -246,8 +247,38 @@ export async function POST(request: NextRequest) {
             },
           },
         },
+        guest: {
+          select: {
+            name: true,
+            email: true,
+          },
+        },
       },
     })
+
+    // Send email notifications
+    const emailData: BookingEmailData = {
+      guestName: booking.guest.name || 'Guest',
+      guestEmail: booking.guest.email || '',
+      hostName: booking.listing.host.name || 'Host',
+      hostEmail: booking.listing.host.email || '',
+      listingTitle: booking.listing.title,
+      listingId: booking.listing.id,
+      bookingId: booking.id,
+      checkIn: checkInDate.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }),
+      checkOut: checkOutDate.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }),
+      totalPrice: total,
+      nights,
+    }
+
+    // Send appropriate email based on booking type
+    if (listing.instantBook) {
+      // Instant book - send confirmed emails
+      sendBookingConfirmedEmail(emailData).catch(console.error)
+    } else {
+      // Request to book - send request emails
+      sendBookingRequestEmail(emailData).catch(console.error)
+    }
 
     return NextResponse.json(booking, { status: 201 })
   } catch (error) {

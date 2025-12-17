@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { sendNewMessageEmail } from '@/lib/email'
 
 // POST /api/conversations/[id]/messages - Send a message
 export async function POST(
@@ -91,6 +92,33 @@ export async function POST(
       where: { id },
       data: { updatedAt: new Date() },
     })
+
+    // Send email notification to recipient
+    const recipientUser = await prisma.user.findUnique({
+      where: { id: receiver.userId },
+      select: { name: true, email: true },
+    })
+
+    // Get listing title if this conversation is about a listing
+    let listingTitle: string | undefined
+    if (conversation.listingId) {
+      const listing = await prisma.listing.findUnique({
+        where: { id: conversation.listingId },
+        select: { title: true },
+      })
+      listingTitle = listing?.title
+    }
+
+    if (recipientUser?.email) {
+      sendNewMessageEmail({
+        recipientName: recipientUser.name || 'User',
+        recipientEmail: recipientUser.email,
+        senderName: message.sender.name || 'User',
+        messagePreview: content.trim(),
+        conversationId: id,
+        listingTitle,
+      }).catch(console.error)
+    }
 
     return NextResponse.json(message, { status: 201 })
   } catch (error) {
