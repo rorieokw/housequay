@@ -34,7 +34,7 @@ const features = [
 
 const popularLocations = [
   { name: 'Sydney Harbour', image: 'https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?w=800&h=600&fit=crop&q=80', count: 245, tagline: 'Iconic waterfront' },
-  { name: 'Gold Coast', image: 'https://images.unsplash.com/photo-1571704258042-1f1a2bbb7e55?w=800&h=600&fit=crop&q=80', count: 189, tagline: 'Endless canals' },
+  { name: 'Gold Coast', image: 'https://images.unsplash.com/photo-1562184552-997c461abbe6?w=800&h=600&fit=crop&q=80', count: 189, tagline: 'Endless canals' },
   { name: 'Great Barrier Reef', image: 'https://images.unsplash.com/photo-1559128010-7c1ad6e1b6a5?w=800&h=600&fit=crop&q=80', count: 156, tagline: 'Natural wonder' },
   { name: 'Whitsundays', image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800&h=600&fit=crop&q=80', count: 134, tagline: 'Island paradise' },
 ];

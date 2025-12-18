@@ -90,7 +90,7 @@ export const jetties: Jetty[] = [
     maxBoatLength: 50,
     maxBoatLengthCategory: 'large',
     images: [
-      'https://images.unsplash.com/photo-1571704258042-1f1a2bbb7e55?w=800&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1562184552-997c461abbe6?w=800&h=600&fit=crop',
       'https://images.unsplash.com/photo-1540946485063-a40da27545f8?w=800&h=600&fit=crop',
       'https://images.unsplash.com/photo-1559128010-7c1ad6e1b6a5?w=800&h=600&fit=crop',
     ],
@@ -173,7 +173,7 @@ export const jetties: Jetty[] = [
     maxBoatLengthCategory: 'yacht',
     images: [
       'https://images.unsplash.com/photo-1540946485063-a40da27545f8?w=800&h=600&fit=crop',
-      'https://images.unsplash.com/photo-1571704258042-1f1a2bbb7e55?w=800&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1562184552-997c461abbe6?w=800&h=600&fit=crop',
       'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800&h=600&fit=crop',
     ],
     amenities: ['Power', 'Water', 'WiFi', 'Security', 'Fuel', 'Concierge', 'Provisioning', 'Waste Pump-out'],
@@ -256,7 +256,7 @@ export const jetties: Jetty[] = [
     images: [
       'https://images.unsplash.com/photo-1559128010-7c1ad6e1b6a5?w=800&h=600&fit=crop',
       'https://images.unsplash.com/photo-1540946485063-a40da27545f8?w=800&h=600&fit=crop',
-      'https://images.unsplash.com/photo-1571704258042-1f1a2bbb7e55?w=800&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1562184552-997c461abbe6?w=800&h=600&fit=crop',
     ],
     amenities: ['Power', 'Water', 'WiFi', 'Fuel', 'Dive Shop', 'Restaurant', 'Showers'],
     rating: 4.9,
@@ -338,7 +338,7 @@ export const jetties: Jetty[] = [
     images: [
       'https://images.unsplash.com/photo-1540946485063-a40da27545f8?w=800&h=600&fit=crop',
       'https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?w=800&h=600&fit=crop',
-      'https://images.unsplash.com/photo-1571704258042-1f1a2bbb7e55?w=800&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1562184552-997c461abbe6?w=800&h=600&fit=crop',
     ],
     amenities: ['Power', 'Water', 'WiFi', '24/7 Security', 'Concierge', 'Helipad Access', 'Provisioning'],
     rating: 5.0,
@@ -379,7 +379,7 @@ export const jetties: Jetty[] = [
     images: [
       'https://images.unsplash.com/photo-1559128010-7c1ad6e1b6a5?w=800&h=600&fit=crop',
       'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800&h=600&fit=crop',
-      'https://images.unsplash.com/photo-1571704258042-1f1a2bbb7e55?w=800&h=600&fit=crop',
+      'https://images.unsplash.com/photo-1562184552-997c461abbe6?w=800&h=600&fit=crop',
     ],
     amenities: ['Power', 'Lighting'],
     rating: 4.3,
