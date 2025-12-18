@@ -53,11 +53,14 @@ export default function Header() {
 
   return (
     <header
-      className={`sticky top-0 z-50 transition-all duration-300 ${
-        useTransparentHeader
-          ? 'bg-transparent'
-          : 'bg-white/95 dark:bg-[var(--background)]/95 backdrop-blur-xl shadow-sm border-b border-[var(--border)]'
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        !useTransparentHeader ? 'bg-white/95 dark:bg-slate-900/95 shadow-sm' : ''
       }`}
+      style={{
+        background: useTransparentHeader ? 'transparent' : undefined,
+        backdropFilter: useTransparentHeader ? 'none' : 'blur(12px)',
+        borderBottom: useTransparentHeader ? 'none' : '1px solid var(--border)',
+      }}
     >
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-18 py-4">

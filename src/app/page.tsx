@@ -63,9 +63,9 @@ const stats = [
 
 export default function Home() {
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col -mt-18">
       {/* Hero Section - Premium Gradient with Mesh */}
-      <section className="relative min-h-[90vh] flex items-center overflow-hidden">
+      <section className="relative min-h-[90vh] flex items-center overflow-hidden pt-18">
         {/* Background layers */}
         <div className="absolute inset-0 bg-gradient-hero" />
         <div className="absolute inset-0 bg-mesh-gradient opacity-30" />
