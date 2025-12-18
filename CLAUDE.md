@@ -30,11 +30,12 @@
 - **Enhanced Search** - Date-aware availability filtering
 - **Premium Design** - Polished UI with gradients, animations
 - **Host Analytics Dashboard** - Earnings, bookings, performance tracking
+- **Admin Dashboard** - User management, listing moderation, reports
 
 ## NEXT STEPS
 - Email verification (post-MVP enhancement)
 - SMS notifications (optional)
-- Admin tools (moderation, support)
+- Mobile app (React Native)
 
 ---
 
@@ -140,7 +141,15 @@
   - [x] Listing performance table
   - [x] Recent bookings list
   - [x] Visual charts (monthly earnings, booking breakdown)
-- [ ] **5.3 Admin Tools** (moderation, support)
+- [x] **5.3 Admin Tools** (COMPLETE)
+  - [x] Admin dashboard page (`/admin`)
+  - [x] User management API (`/api/admin/users`)
+  - [x] User suspend/unsuspend functionality
+  - [x] Listing moderation API (`/api/admin/listings`)
+  - [x] Listing approve/reject/pause actions
+  - [x] Reports system API (`/api/admin/reports`)
+  - [x] Report handling with status updates
+  - [x] Overview stats and recent activity
 - [ ] **5.4 API for Marina Partnerships**
 
 ---

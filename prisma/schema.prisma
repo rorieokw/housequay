@@ -37,6 +37,11 @@ model User {
   isVerified    Boolean   @default(false)
   idVerified    Boolean   @default(false)
 
+  // Suspension status (for admin moderation)
+  isSuspended   Boolean   @default(false)
+  suspendedAt   DateTime?
+  suspendedReason String?
+
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -51,6 +56,11 @@ model User {
   messagesReceived Message[]      @relation("MessageReceiver")
   conversations ConversationParticipant[]
   favorites     Favorite[]
+
+  // Reports (admin moderation)
+  reportsMade     Report[]        @relation("ReportsMade")
+  reportsReceived Report[]        @relation("ReportsReceived")
+  reportsHandled  Report[]        @relation("ReportsHandled")
 }
 
 model Account {
@@ -153,6 +163,7 @@ model Listing {
   reviews      Review[]
   favorites    Favorite[]
   availability Availability[]
+  reports      Report[]
   conversations Conversation[]
 
   @@index([city])
@@ -238,6 +249,7 @@ model Booking {
   listing       Listing       @relation(fields: [listingId], references: [id])
   review        Review?
   conversations Conversation[]
+  reports       Report[]
 
   @@index([guestId])
   @@index([listingId])
@@ -401,4 +413,62 @@ enum PaymentStatus {
   FAILED
   REFUNDED
   PARTIALLY_REFUNDED
+}
+
+// ============================================================================
+// ADMIN & MODERATION
+// ============================================================================
+
+model Report {
+  id          String       @id @default(cuid())
+
+  // Reporter
+  reporterId  String
+  reporter    User         @relation("ReportsMade", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  // What's being reported (one of these)
+  listingId   String?
+  listing     Listing?     @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  userId      String?      // Reported user
+  reportedUser User?       @relation("ReportsReceived", fields: [userId], references: [id], onDelete: SetNull)
+  bookingId   String?
+  booking     Booking?     @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+
+  // Report details
+  reason      ReportReason
+  description String       @db.Text
+
+  // Status
+  status      ReportStatus @default(PENDING)
+
+  // Admin response
+  adminId     String?
+  admin       User?        @relation("ReportsHandled", fields: [adminId], references: [id], onDelete: SetNull)
+  adminNotes  String?      @db.Text
+  resolvedAt  DateTime?
+
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([status])
+  @@index([reporterId])
+  @@index([listingId])
+  @@index([userId])
+}
+
+enum ReportReason {
+  INAPPROPRIATE_CONTENT
+  SCAM_FRAUD
+  SAFETY_CONCERN
+  HARASSMENT
+  INACCURATE_LISTING
+  SPAM
+  OTHER
+}
+
+enum ReportStatus {
+  PENDING
+  UNDER_REVIEW
+  RESOLVED
+  DISMISSED
 }
