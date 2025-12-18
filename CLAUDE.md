@@ -1,9 +1,9 @@
 # HouseQuay Development Roadmap
 
 ## Current Status
-**Phase:** 4 - Growth Features (COMPLETE)
-**Step:** Full MVP Complete
-**Overall Progress:** ~95% to Production
+**Phase:** 5 - Scale (IN PROGRESS)
+**Step:** 5.2 Analytics Dashboard (COMPLETE)
+**Overall Progress:** ~98% to Production
 **Last Updated:** 2025-12-18
 
 ---
@@ -29,11 +29,12 @@
 - **Wishlist/Favorites** - Save and manage favorite jetties
 - **Enhanced Search** - Date-aware availability filtering
 - **Premium Design** - Polished UI with gradients, animations
+- **Host Analytics Dashboard** - Earnings, bookings, performance tracking
 
 ## NEXT STEPS
-- Add Resend API key to production environment
 - Email verification (post-MVP enhancement)
 - SMS notifications (optional)
+- Admin tools (moderation, support)
 
 ---
 
@@ -111,23 +112,34 @@
   - [x] Cancellation policy info in Terms
   - [x] Footer links to legal pages
 
-### Phase 4: Growth Features
-- [ ] **4.1 Notifications**
-  - [ ] Email notifications (SendGrid/Resend)
-  - [ ] Optional SMS alerts
+### Phase 4: Growth Features (COMPLETE)
+- [x] **4.1 Notifications** (COMPLETE)
+  - [x] Email notifications via Resend
+  - [x] Booking notifications (request, confirmed, declined, cancelled)
+  - [x] Message notifications
+  - [ ] Optional SMS alerts (post-MVP)
 
-- [ ] **4.2 Wishlist/Favorites**
-  - [ ] Save listings
-  - [ ] Share lists
+- [x] **4.2 Wishlist/Favorites** (COMPLETE)
+  - [x] Favorites API (`/api/favorites`)
+  - [x] Favorites page (`/favorites`)
+  - [x] Heart button on JettyCard
+  - [ ] Share lists (post-MVP)
 
-- [ ] **4.3 Enhanced Search**
-  - [ ] Date-aware availability search
-  - [ ] Recently viewed listings
-  - [ ] Search suggestions
+- [x] **4.3 Enhanced Search** (COMPLETE)
+  - [x] Date-aware availability search
+  - [ ] Recently viewed listings (post-MVP)
+  - [ ] Search suggestions (post-MVP)
 
 ### Phase 5: Scale
 - [ ] **5.1 Mobile App** (React Native)
-- [ ] **5.2 Analytics Dashboard** (for hosts)
+- [x] **5.2 Analytics Dashboard** (COMPLETE)
+  - [x] Analytics API endpoint (`/api/analytics`)
+  - [x] Host dashboard page (`/dashboard/analytics`)
+  - [x] Earnings tracking (total, pending, monthly)
+  - [x] Booking statistics (by status)
+  - [x] Listing performance table
+  - [x] Recent bookings list
+  - [x] Visual charts (monthly earnings, booking breakdown)
 - [ ] **5.3 Admin Tools** (moderation, support)
 - [ ] **5.4 API for Marina Partnerships**
 
@@ -145,7 +157,7 @@
 | ORM | Prisma | ✅ Done |
 | Image Storage | Cloudinary | ✅ Done |
 | Payments | Stripe | ✅ Done |
-| Email | Resend | Pending |
+| Email | Resend | ✅ Done |
 | Hosting | Vercel | ✅ Done |
 
 ---
